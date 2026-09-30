@@ -18,6 +18,19 @@ export default tseslint.config(
   {
     ...playwright.configs['flat/recommended'],
     files: ['tests/**/*.spec.ts'],
+    rules: {
+      ...playwright.configs['flat/recommended'].rules,
+      'playwright/expect-expect': [
+        'error',
+        {
+          assertFunctionNames: [
+            'expect',
+            'expectJsonResponse',
+            'expectAuthenticationError',
+          ],
+        },
+      ],
+    },
   },
   prettier,
 );

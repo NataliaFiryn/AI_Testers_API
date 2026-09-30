@@ -3,6 +3,8 @@ playwright-report/
 test-results/
 blob-report/
 package-lock.json
+# Preserve the supplied OpenAPI snapshot as the contract source.
+api-docs.json
 .env
 .env.*
 .husky/_/
