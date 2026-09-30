@@ -14,8 +14,8 @@ Prettier, and Husky. It requires Node.js 22.17 or later and npm.
 - `tests/fixtures/api.fixture.ts`: shared fixtures exposing API clients.
 - `src/clients/`: endpoint clients using Playwright's `APIRequestContext`.
 - `src/config/env.ts`: environment configuration and validation.
-- `tests/support/demo-server.ts`: local demonstration API.
-- `playwright.config.ts`: test execution, reporting, and demo server setup.
+- `tests/support/api.assertions.ts`: shared response assertions.
+- `playwright.config.ts`: test execution and reporting.
 
 ## Working conventions
 
@@ -38,19 +38,20 @@ Install dependencies with `npm ci`. If `.env` is missing, copy `.env.example`
 to `.env`. `BASE_URL` is required; environment variables take precedence over
 values in `.env`.
 
-With `BASE_URL=http://127.0.0.1:3100`, Playwright automatically starts and stops
-the demo server. Port 3100 must be available. Other base URLs target an external
-API and do not start the demo server. API tests do not require browser binaries.
+Use `BASE_URL=https://awesome.byst.re` for the documented API and configure
+`LOGIN_USERNAME` and `LOGIN_PASSWORD` for a test account without MFA.
+Tests target the configured API directly and do not start a demo server.
+API tests do not require browser binaries.
 
-| Command                                | Purpose                  |
-| -------------------------------------- | ------------------------ |
-| `npm test`                             | Run all API tests        |
-| `npm test -- tests/api/health.spec.ts` | Run a specific test file |
-| `npm run test:debug`                   | Debug tests              |
-| `npm run test:report`                  | Open the HTML report     |
-| `npm run lint`                         | Check lint rules         |
-| `npm run typecheck`                    | Check TypeScript types   |
-| `npm run format:check`                 | Check formatting         |
+| Command                                   | Purpose                  |
+| ----------------------------------------- | ------------------------ |
+| `npm test`                                | Run all API tests        |
+| `npm test -- tests/api/login/400.spec.ts` | Run a specific test file |
+| `npm run test:debug`                      | Debug tests              |
+| `npm run test:report`                     | Open the HTML report     |
+| `npm run lint`                            | Check lint rules         |
+| `npm run typecheck`                       | Check TypeScript types   |
+| `npm run format:check`                    | Check formatting         |
 
 On Windows, use `npm.cmd` and `npx.cmd` if PowerShell blocks the `.ps1` wrappers.
 
