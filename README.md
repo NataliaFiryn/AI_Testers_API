@@ -53,14 +53,20 @@ const response = await usersClient.me({
 ```
 
 Run `npm test -- tests/api/users/me` for profile and authentication checks.
-The fixture deletes its own generated account after the test through the
-right-to-be-forgotten endpoint, including after test failures. Cleanup failures
-are reported; an account may remain if registration succeeds but login fails
-before a usable token is obtained. Do not log the returned credentials or JWT.
+The shared `accountCleanup` fixture tracks every account created with HTTP 201
+through `registrationClient`, including registration and boundary tests. It saves
+the actual submitted credentials and, after the test (including failures), logs
+in each account and deletes it through the right-to-be-forgotten endpoint.
+`authenticatedUser` uses the same cleanup, without a second deletion.
+Cleanup continues for other accounts if one fails. Failures are reported as test
+annotations and fail otherwise successful tests. Accounts may remain if cleanup
+login or deletion fails, the fixture times out, or the process is interrupted.
+Requests without a confirmed HTTP 201 are not tracked. Do not log credentials or JWTs.
 
 ## Key limitations
 
-- Registration tests create persistent accounts and require only `BASE_URL`.
+- Registration tests require only `BASE_URL`; cleanup requires working login and
+  account-deletion endpoints.
 - MFA and rate-limit responses are not covered.
 - The API rejects passwords over 72 bytes despite the documented 255-character
   maximum; the 255-character password case is not covered.

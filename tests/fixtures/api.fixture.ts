@@ -9,6 +9,7 @@ import { getLoginCredentials } from '../../src/config/env.js';
 import {
   RegistrationClient,
   type RegistrationData,
+  type RegistrationRequest,
 } from '../../src/clients/registration.client.js';
 import { UsersClient } from '../../src/clients/users.client.js';
 
@@ -24,20 +25,18 @@ export const test = base.extend<{
   registrationClient: RegistrationClient;
   usersClient: UsersClient;
   authenticatedUser: AuthenticatedUser;
+  accountCleanup: (data: RegistrationRequest) => void;
 }>({
   usersClient: async ({ request }, use) => {
     await use(new UsersClient(request));
   },
   authenticatedUser: [
-    async ({ registrationClient, loginClient, usersClient }, use, testInfo) => {
+    async ({ registrationClient, loginClient }, use) => {
       const user = generateRegistrationData();
-      let registered = false;
       let token: string | undefined;
-      let cleanupError: string | undefined;
       let stage = 'registration';
       try {
         const registration = await registrationClient.signUp(user);
-        registered = registration.status() === 201;
         expect(registration.status(), 'Registration must succeed').toBe(201);
         expect(
           (await registration.text()).length,
@@ -94,32 +93,6 @@ export const test = base.extend<{
       } catch {
         // Request errors may contain headers or payloads; never include their cause.
         throw new Error(`Authenticated user fixture failed during ${stage}`);
-      } finally {
-        if (token) {
-          try {
-            const response = await usersClient.forget(user.username, {
-              Authorization: `Bearer ${token}`,
-            });
-            if (![204, 404].includes(response.status())) {
-              cleanupError = `Account cleanup returned HTTP ${response.status()}`;
-            }
-          } catch {
-            cleanupError = 'Account cleanup request failed';
-          }
-        } else if (registered) {
-          cleanupError =
-            'Registered account remains because login did not provide a usable cleanup token';
-        }
-        if (cleanupError) {
-          testInfo.annotations.push({
-            type: 'cleanup failure',
-            description: cleanupError,
-          });
-          console.warn(cleanupError);
-        }
-      }
-      if (cleanupError && testInfo.status === testInfo.expectedStatus) {
-        throw new Error(cleanupError);
       }
     },
     { timeout: 60_000 },
@@ -127,8 +100,71 @@ export const test = base.extend<{
   apiDocsClient: async ({ request }, use) => {
     await use(new ApiDocsClient(request));
   },
-  registrationClient: async ({ request }, use) => {
-    await use(new RegistrationClient(request));
+  accountCleanup: [
+    async ({ loginClient, usersClient }, use, testInfo) => {
+      const accounts: RegistrationRequest[] = [];
+      const failures: string[] = [];
+      try {
+        await use((data) => accounts.push({ ...data }));
+      } finally {
+        for (const account of accounts) {
+          try {
+            if (
+              typeof account.username !== 'string' ||
+              typeof account.password !== 'string'
+            ) {
+              failures.push(
+                'Created account has no usable cleanup credentials',
+              );
+              continue;
+            }
+            const login = await loginClient.signIn({
+              username: account.username,
+              password: account.password,
+            });
+            if (login.status() !== 200) {
+              failures.push('Cleanup login returned HTTP ' + login.status());
+              continue;
+            }
+            const body: unknown = await login.json();
+            if (
+              typeof body !== 'object' ||
+              body === null ||
+              !('token' in body) ||
+              typeof body.token !== 'string' ||
+              !body.token
+            ) {
+              failures.push('Cleanup login did not return an access token');
+              continue;
+            }
+            const response = await usersClient.forget(account.username, {
+              Authorization: 'Bearer ' + body.token,
+            });
+            if (![204, 404].includes(response.status())) {
+              failures.push(
+                'Account cleanup returned HTTP ' + response.status(),
+              );
+            }
+          } catch {
+            // Request errors can contain credentials or authorization headers.
+            failures.push('Account cleanup request failed');
+          }
+        }
+        for (const description of failures) {
+          testInfo.annotations.push({ type: 'cleanup failure', description });
+          console.warn(description);
+        }
+      }
+      if (failures.length && testInfo.status === testInfo.expectedStatus) {
+        throw new Error(
+          'Failed to clean up ' + failures.length + ' test account(s)',
+        );
+      }
+    },
+    { timeout: 120_000 },
+  ],
+  registrationClient: async ({ request, accountCleanup }, use) => {
+    await use(new RegistrationClient(request, accountCleanup));
   },
   loginClient: async ({ request }, use) => {
     await use(new LoginClient(request));
