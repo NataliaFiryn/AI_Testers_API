@@ -3,6 +3,9 @@
 API tests built with Playwright and TypeScript for [awesome.byst.re](https://awesome.byst.re),
 covering login, registration, and the current user profile. API contract: [api-docs.json](api-docs.json).
 
+See the [API test plan and coverage tracker](test-plan.md) for every endpoint's
+implementation status, test evidence, remaining gaps, and planned work.
+
 ## Setup
 
 Requires **Node.js 22.17+** and **npm**. No browser installation is needed.
