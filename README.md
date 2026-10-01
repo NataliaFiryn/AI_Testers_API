@@ -1,7 +1,7 @@
 # AI TESTERS vol2 API Tests
 
 API tests built with Playwright and TypeScript for [awesome.byst.re](https://awesome.byst.re),
-covering login and registration. API contract: [api-docs.json](api-docs.json).
+covering login, registration, and the current user profile. API contract: [api-docs.json](api-docs.json).
 
 ## Setup
 
@@ -37,6 +37,26 @@ On Windows, use `npm.cmd` if PowerShell blocks npm's script wrapper.
 - `tests/fixtures/`: shared test fixtures.
 - `Generators/`: registration test data generators.
 - `src/config/env.ts`: environment configuration.
+
+## Authenticated tests
+
+Use `authenticatedUser` from `tests/fixtures/api.fixture.ts` to register and then
+log in a new user for each test. It returns `{ user, token }`, where `user` is
+the original generated registration data (including the password) and `token`
+is the access JWT. Only `BASE_URL` is required; existing login credentials are
+not used. Pass the token explicitly to clients:
+
+```ts
+const response = await usersClient.me({
+  Authorization: `Bearer ${authenticatedUser.token}`,
+});
+```
+
+Run `npm test -- tests/api/users/me` for profile and authentication checks.
+The fixture deletes its own generated account after the test through the
+right-to-be-forgotten endpoint, including after test failures. Cleanup failures
+are reported; an account may remain if registration succeeds but login fails
+before a usable token is obtained. Do not log the returned credentials or JWT.
 
 ## Key limitations
 
